@@ -1,6 +1,8 @@
 import pandas as pd
 
-_df = pd.read_csv("data/nutrition.csv").set_index("dish")
+from pathlib import Path
+_CSV = Path(__file__).parent / "data" / "nutrition.csv"
+_df = pd.read_csv(_CSV).set_index("dish")
 
 def get_nutrition(dish: str, grams: float | None = None) -> dict:
     row = _df.loc[dish]
