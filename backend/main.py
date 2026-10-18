@@ -84,6 +84,14 @@ async def analyze_food(file: UploadFile = File(...)):
     idx = int(probs.argmax())
     label = classes[idx]
     confidence = float(probs[idx])
+    MIN_CONF = 0.40
+    if confidence < MIN_CONF:
+        return {
+            "food": None,
+            "confidence": round(confidence, 3),
+            "nutrition": None,
+            "message": "Couldn't recognise this food confidently. Try a clearer photo of a single dish."
+        }
     nutrition = get_nutrition(label)
 
     return {
