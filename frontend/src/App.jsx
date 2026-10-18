@@ -1,7 +1,9 @@
-import { Routes, Route } from 'react-router-dom'
-import Layout from './components/Layout'
-import FoodRecognition from './pages/FoodRecognition'
-import FreshnessDetector from './pages/FreshnessDetector'
+import { Routes, Route } from 'react-router-dom';
+import Layout from './components/Layout';
+import FoodRecognition from './pages/FoodRecognition';
+import FreshnessDetector from './pages/FreshnessDetector';
+import MealPlanner from './pages/MealPlanner';
+import Hygiene from './pages/Hygiene';
 
 function Placeholder({ title }) {
   return (
@@ -9,7 +11,7 @@ function Placeholder({ title }) {
       <h1>{title}</h1>
       <p className="muted">Coming soon.</p>
     </div>
-  )
+  );
 }
 
 export default function App() {
@@ -19,10 +21,10 @@ export default function App() {
         <Route path="/" element={<Placeholder title="Overview" />} />
         <Route path="/food-recognition" element={<FoodRecognition />} />
         <Route path="/freshness-detector" element={<FreshnessDetector />} />
-        <Route path="/hygiene-monitor" element={<Placeholder title="Hygiene Monitor" />} />
+        <Route path="/hygiene-monitor" element={<Hygiene />} />
         <Route path="/kitchen-assistant" element={<Placeholder title="Smart Kitchen" />} />
-        <Route path="/meal-planner" element={<Placeholder title="Meal Planner" />} />
+        <Route path="/meal-planner" element={<MealPlanner />} />
       </Routes>
     </Layout>
-  )
+  );
 }

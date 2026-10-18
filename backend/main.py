@@ -1,6 +1,9 @@
 import io
 import json
 from pathlib import Path
+from backend.meal_planner import PlanRequest, build_plan
+from backend.meal_planner import PlanRequest, build_plan
+from backend.hygiene import HygieneRequest, CHECKLIST, score
 
 import timm
 import torch
@@ -108,3 +111,17 @@ async def analyze_food(file: UploadFile = File(...)):
 async def check_freshness_endpoint(file: UploadFile = File(...)):
     img = await load_image(file)
     return check_freshness(img)
+@app.post("/plan-meal")
+def plan_meal(req: PlanRequest):
+    return build_plan(req)
+@app.post("/meal-plan")
+def meal_plan(req: PlanRequest):
+    return build_plan(req)
+
+@app.get("/hygiene-checklist")
+def hygiene_checklist():
+    return CHECKLIST
+
+@app.post("/hygiene-score")
+def hygiene_score(req: HygieneRequest):
+    return score(req)
