@@ -4,6 +4,7 @@ from pathlib import Path
 
 import timm
 import torch
+from backend.freshness import check_freshness, to_rgb
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
@@ -51,30 +52,23 @@ def home():
 
 @app.post("/analyze-food")
 async def analyze_food(file: UploadFile = File(...)):
+    img = await load_image(file)
+    # ... keep your existing analyze_food code here ...
+
+
+async def load_image(file: UploadFile) -> Image.Image:
     if file.content_type not in ("image/jpeg", "image/png", "image/webp"):
         raise HTTPException(400, "Please upload a JPG, PNG or WEBP image.")
     data = await file.read()
     if len(data) > MAX_BYTES:
         raise HTTPException(413, "Image is too large (max 5 MB).")
     try:
-        img = Image.open(io.BytesIO(data)).convert("RGB")
+        return to_rgb(Image.open(io.BytesIO(data)))
     except Exception:
         raise HTTPException(400, "Could not read the image.")
 
-    x = transform(img).unsqueeze(0)
-    with torch.no_grad():
-        probs = torch.softmax(model(x), dim=1)[0]
-    top = torch.topk(probs, 3)
-    top3 = [{"dish": classes[i], "confidence": round(p.item(), 3)}
-            for p, i in zip(top.values, top.indices)]
-    best = top3[0]
 
-    result = {
-        "prediction": best,
-        "top3": top3,
-        "nutrition": get_nutrition(best["dish"]),
-        "health": health_score(best["dish"]),
-    }
-    if best["confidence"] < 0.5:
-        result["note"] = "Low confidence. Try a clearer photo with good lighting."
-    return result
+@app.post("/check-freshness")
+async def check_freshness_endpoint(file: UploadFile = File(...)):
+    img = await load_image(file)
+    return check_freshness(img)

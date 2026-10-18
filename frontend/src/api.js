@@ -16,3 +16,16 @@ export async function analyzeFood(file) {
 
   return await res.json();
 }
+export async function checkFreshness(file) {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${API_URL}/check-freshness`, {
+    method: "POST",
+    body: form,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Something went wrong");
+  }
+  return res.json();
+}

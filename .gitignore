@@ -4,4 +4,4 @@ __pycache__/
 /data/
 *.pt
 *.pth
-.env
+.env*.zip

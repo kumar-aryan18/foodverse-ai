@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout'
 import FoodRecognition from './pages/FoodRecognition'
+import FreshnessDetector from './pages/FreshnessDetector'
 
 function Placeholder({ title }) {
   return (
@@ -17,7 +18,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Placeholder title="Overview" />} />
         <Route path="/food-recognition" element={<FoodRecognition />} />
-        <Route path="/freshness-detector" element={<Placeholder title="Freshness Detector" />} />
+        <Route path="/freshness-detector" element={<FreshnessDetector />} />
         <Route path="/hygiene-monitor" element={<Placeholder title="Hygiene Monitor" />} />
         <Route path="/kitchen-assistant" element={<Placeholder title="Smart Kitchen" />} />
         <Route path="/meal-planner" element={<Placeholder title="Meal Planner" />} />
