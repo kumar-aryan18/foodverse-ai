@@ -4,6 +4,8 @@ from pathlib import Path
 from backend.meal_planner import PlanRequest, build_plan
 from backend.meal_planner import PlanRequest, build_plan
 from backend.hygiene import HygieneRequest, CHECKLIST, score
+from backend.smart_kitchen import KitchenItem, list_items, add_item, remove_item
+from fastapi import FastAPI, UploadFile, File, HTTPException
 
 import timm
 import torch
@@ -125,3 +127,18 @@ def hygiene_checklist():
 @app.post("/hygiene-score")
 def hygiene_score(req: HygieneRequest):
     return score(req)
+@app.get("/kitchen/items")
+def kitchen_items():
+    return list_items()
+
+@app.post("/kitchen/items")
+def kitchen_add(item: KitchenItem):
+    if not item.name.strip():
+        raise HTTPException(400, "Item name is required.")
+    add_item(item)
+    return list_items()
+
+@app.delete("/kitchen/items/{item_id}")
+def kitchen_delete(item_id: int):
+    remove_item(item_id)
+    return list_items()
