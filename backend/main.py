@@ -1,22 +1,23 @@
 import io
 import json
 from pathlib import Path
-from backend.meal_planner import PlanRequest, build_plan
-from backend.meal_planner import PlanRequest, build_plan
-from backend.hygiene import HygieneRequest, CHECKLIST, score
-from backend.smart_kitchen import KitchenItem, list_items, add_item, remove_item
-from fastapi import FastAPI, UploadFile, File, HTTPException
 
 import timm
 import torch
-from backend.freshness import check_freshness, to_rgb
-from fastapi import FastAPI, File, HTTPException, UploadFile
+import torch.nn as nn
+import torchvision.models as models
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 from torchvision import transforms
 
+from backend.freshness import check_freshness, to_rgb
+from backend.hygiene import HygieneRequest, CHECKLIST, score
+from backend.meal_planner import PlanRequest, build_plan
 from backend.nutrition import get_nutrition, health_score
-from fastapi import UploadFile, HTTPException
+from backend.smart_kitchen import KitchenItem, list_items, add_item, remove_item
+from backend.meal_ai import router as meal_ai_router
+app.include_router(meal_ai_router)
 
 ALLOWED = {"image/jpeg", "image/png", "image/webp"}
 MAX_BYTES = 5 * 1024 * 1024
@@ -62,6 +63,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+from backend.voice import router as voice_router
+app.include_router(voice_router)
+from backend.recipe import router as recipe_router
+app.include_router(recipe_router)
 async def load_image(file: UploadFile) -> Image.Image:
     if file.content_type not in ("image/jpeg", "image/png", "image/webp"):
         raise HTTPException(400, "Please upload a JPG, PNG or WEBP image.")
@@ -78,35 +83,52 @@ def home():
     return {"message": "FoodVerse AI backend is running"}
 
 
+def match_from_text(text: str):
+    t = (text or "").lower().replace("_", " ")
+    if not t.strip():
+        return None
+    for c in classes:
+        if c.lower().replace("_", " ") in t:
+            return c
+    return None
+
+
 @app.post("/analyze-food")
-async def analyze_food(file: UploadFile = File(...)):
+async def analyze_food(file: UploadFile = File(...), description: str = Form("")):
     img = await load_image(file)
     x = transform(img).unsqueeze(0)
     with torch.no_grad():
         outputs = model(x)
         probs = torch.softmax(outputs, dim=-1)[0]
-    
+
     idx = int(probs.argmax())
     label = classes[idx]
     confidence = float(probs[idx])
+    source = "image"
+
     MIN_CONF = 0.40
     if confidence < MIN_CONF:
-        return {
-            "food": None,
-            "confidence": round(confidence, 3),
-            "nutrition": None,
-            "message": "Couldn't recognise this food confidently. Try a clearer photo of a single dish."
-        }
+        hinted = match_from_text(description)
+        if hinted:
+            label = hinted
+            source = "description"
+        else:
+            return {
+                "food": None,
+                "confidence": round(confidence, 3),
+                "nutrition": None,
+                "message": "Couldn't recognise this food confidently. Try a clearer photo of a single dish, or describe it in the description box.",
+            }
+
     nutrition = get_nutrition(label)
 
     return {
         "food": label,
         "confidence": round(confidence, 3),
         "nutrition": nutrition,
-        
-        "health_score": health_score(label)
+        "health_score": health_score(label),
+        "source": source,
     }
-
 
 
 @app.post("/check-freshness")

@@ -1,91 +1,210 @@
 import { useEffect, useState } from "react";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
-
-const COLORS = { expired: "#e5484d", use_soon: "#f5a524", fresh: "#30a46c" };
-const LABELS = { expired: "Expired", use_soon: "Use soon", fresh: "Fresh" };
+import { ChefHat, Type, Upload, ArrowRight, Loader2, Trash2, Plus, Clock, Users } from "lucide-react";
+import { analyzeFood, generateRecipe, getKitchenItems, addKitchenItem, deleteKitchenItem } from "../api";
 
 export default function SmartKitchen() {
+  const [tab, setTab] = useState("recipe");
+
+  /* ---------- Recipe generator ---------- */
+  const [text, setText] = useState("");
+  const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [recipe, setRecipe] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  /* ---------- Pantry ---------- */
   const [items, setItems] = useState([]);
   const [name, setName] = useState("");
   const [expiry, setExpiry] = useState("");
-  const [error, setError] = useState("");
+  const [pantryError, setPantryError] = useState("");
 
-  async function load() {
-    try {
-      const res = await fetch(`${API_URL}/kitchen/items`);
-      setItems(await res.json());
-    } catch {
-      setError("Could not load items. Is the backend running?");
-    }
-  }
+  useEffect(() => {
+    getKitchenItems().then(setItems).catch((e) => setPantryError(e.message));
+  }, []);
 
-  useEffect(() => { load(); }, []);
+  const pickFile = (f) => {
+    if (!f) return;
+    setFile(f);
+    setPreview(URL.createObjectURL(f));
+  };
 
-  async function add() {
-    if (!name.trim() || !expiry) {
-      setError("Enter an item name and an expiry date.");
-      return;
-    }
+  const usePantry = () => {
+    const names = items.map((i) => i.name).filter(Boolean);
+    if (!names.length) { setError("Your pantry is empty. Add items in the Pantry tab."); return; }
     setError("");
+    setText((p) => (p ? p.trim() + ", " : "I have ") + names.join(", "));
+  };
+
+  const generate = async () => {
+    setError("");
+    setRecipe(null);
+    setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/kitchen/items`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, expiry }),
-      });
-      if (!res.ok) throw new Error();
-      setItems(await res.json());
-      setName(""); setExpiry("");
-    } catch {
-      setError("Could not add the item.");
+      let dish = "";
+      if (file) {
+        try {
+          const a = await analyzeFood(file, text);
+          if (a && a.food) dish = String(a.food).replace(/_/g, " ");
+        } catch { /* photo is optional, keep going */ }
+      }
+      if (!text.trim() && !dish) {
+        setError("Couldn't recognise the photo. Describe the dish or ingredients instead.");
+        return;
+      }
+      setRecipe(await generateRecipe(text, dish));
+    } catch (e) {
+      setError(e.message || "Recipe generation failed");
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
-  async function remove(id) {
-    const res = await fetch(`${API_URL}/kitchen/items/${id}`, { method: "DELETE" });
-    setItems(await res.json());
-  }
+  const add = async () => {
+    if (!name.trim()) return;
+    setPantryError("");
+    try {
+      setItems(await addKitchenItem(name.trim(), expiry));
+      setName("");
+      setExpiry("");
+    } catch (e) { setPantryError(e.message); }
+  };
 
-  const expiredCount = items.filter((i) => i.state === "expired").length;
-  const soonCount = items.filter((i) => i.state === "use_soon").length;
+  const remove = async (id) => {
+    try { setItems(await deleteKitchenItem(id)); } catch (e) { setPantryError(e.message); }
+  };
+
+  const badge = (i) => {
+    const d = i.days_left;
+    if (typeof d !== "number") return { text: i.status || "", cls: "" };
+    if (d < 0) return { text: "Expired", cls: "bad" };
+    if (d <= 2) return { text: `${d}d left`, cls: "warn" };
+    return { text: `${d}d left`, cls: "ok" };
+  };
 
   return (
-    <div style={{ maxWidth: 650, margin: "0 auto", padding: 20 }}>
-      <h2>Smart Kitchen Inventory</h2>
-
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <input placeholder="Item (e.g. Milk)" value={name}
-               onChange={(e) => setName(e.target.value)} />
-        <input type="date" value={expiry} onChange={(e) => setExpiry(e.target.value)} />
-        <button onClick={add}>Add item</button>
+    <div className="sk-page">
+      <div className="sk-tabs">
+        <button className={tab === "recipe" ? "on" : ""} onClick={() => setTab("recipe")}>Recipe Generator</button>
+        <button className={tab === "pantry" ? "on" : ""} onClick={() => setTab("pantry")}>
+          Pantry{items.length > 0 && <em>{items.length}</em>}
+        </button>
       </div>
-      {error && <p style={{ color: "crimson" }}>{error}</p>}
 
-      {(expiredCount > 0 || soonCount > 0) && (
-        <p style={{ marginTop: 14 }}>
-          ⚠️ {expiredCount} expired, {soonCount} expiring within 2 days
-        </p>
+      {tab === "recipe" && (
+        <>
+          <div className="sk-hero">
+            <div className="sk-chef"><ChefHat size={26} /></div>
+            <h1>Smart Recipe Generator</h1>
+            <p>Describe your ingredients or upload a photo to get a full recipe.</p>
+          </div>
+
+          <div className="sk-card">
+            <div className="sk-cols">
+              <div>
+                <label className="sk-lbl"><Type size={11} /> DESCRIBE DISH / INGREDIENTS</label>
+                <textarea
+                  className="sk-text"
+                  placeholder="e.g. I have chicken, rice, and tomatoes. What can I make?"
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                />
+                {items.length > 0 && (
+                  <button type="button" className="sk-link" onClick={usePantry}>+ Use my pantry items</button>
+                )}
+              </div>
+              <div>
+                <label className="sk-lbl"><Upload size={11} /> UPLOAD IMAGE</label>
+                <label className="sk-drop">
+                  {preview ? (
+                    <img src={preview} alt="preview" className="sk-preview" />
+                  ) : (
+                    <>
+                      <Upload size={20} />
+                      <span>Click to Upload Photo</span>
+                    </>
+                  )}
+                  <input type="file" accept="image/*" hidden onChange={(e) => pickFile(e.target.files[0])} />
+                </label>
+              </div>
+            </div>
+
+            <div className="sk-actions">
+              <button className="sk-btn" onClick={generate} disabled={loading || (!text.trim() && !file)}>
+                {loading ? <><Loader2 size={15} className="spin" /> Cooking up a recipe...</> : <>Generate Recipe <ArrowRight size={15} /></>}
+              </button>
+            </div>
+            {error && <p className="fl-err" style={{ textAlign: "center" }}>{error}</p>}
+          </div>
+
+          {recipe && (
+            <div className="sk-result">
+              <h2>{recipe.title}</h2>
+              {(recipe.time || recipe.servings) && (
+                <div className="sk-meta">
+                  {recipe.time && <span><Clock size={13} /> {recipe.time}</span>}
+                  {recipe.servings && <span><Users size={13} /> Serves {recipe.servings}</span>}
+                </div>
+              )}
+              {recipe.raw ? (
+                <pre className="sk-raw">{recipe.raw}</pre>
+              ) : (
+                <div className="sk-rcols">
+                  <div>
+                    <h4>Ingredients</h4>
+                    <ul>{recipe.ingredients.map((x, i) => <li key={i}>{x}</li>)}</ul>
+                  </div>
+                  <div>
+                    <h4>Steps</h4>
+                    <ol>{recipe.steps.map((x, i) => <li key={i}>{x}</li>)}</ol>
+                  </div>
+                </div>
+              )}
+              {recipe.tips && <p className="sk-tip">Tip: {recipe.tips}</p>}
+            </div>
+          )}
+        </>
       )}
 
-      {items.length === 0 && <p style={{ marginTop: 14 }}>No items yet. Add something above.</p>}
-
-      {items.map((i) => (
-        <div key={i.id} style={{ border: "1px solid #ccc", borderRadius: 8, padding: 12, marginTop: 10 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <b>{i.name}</b>
-            <span style={{ background: COLORS[i.state], color: "white", borderRadius: 12, padding: "2px 10px", fontSize: 13 }}>
-              {LABELS[i.state]}
-            </span>
+      {tab === "pantry" && (
+        <>
+          <div className="sk-hero">
+            <div className="sk-chef"><ChefHat size={26} /></div>
+            <h1>Kitchen Pantry</h1>
+            <p>Track what you have and when it expires.</p>
           </div>
-          <small>
-            Expires {i.expiry} (
-            {i.days_left < 0 ? `${-i.days_left} days ago` : `${i.days_left} days left`})
-          </small>
-          <p style={{ margin: "6px 0", fontSize: 14 }}>💡 {i.tip}</p>
-          <button onClick={() => remove(i.id)}>Remove</button>
-        </div>
-      ))}
+
+          <div className="sk-card">
+            <div className="sk-add">
+              <input className="sk-input" placeholder="Item (e.g. Milk)" value={name}
+                     onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} />
+              <input className="sk-input" type="date" value={expiry} onChange={(e) => setExpiry(e.target.value)} />
+              <button className="sk-btn sm" onClick={add}><Plus size={14} /> Add</button>
+            </div>
+            {pantryError && <p className="fl-err">{pantryError}</p>}
+
+            {items.length === 0 ? (
+              <p className="sk-empty">No items yet. Add something above.</p>
+            ) : (
+              <ul className="sk-list">
+                {items.map((i) => {
+                  const b = badge(i);
+                  return (
+                    <li key={i.id}>
+                      <div>
+                        <b>{i.name}</b>
+                        <span>{i.expiry ? `Expires ${i.expiry}` : "No expiry date"}</span>
+                      </div>
+                      {b.text && <em className={"sk-badge " + b.cls}>{b.text}</em>}
+                      <button className="sk-del" onClick={() => remove(i.id)} aria-label="Delete"><Trash2 size={14} /></button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
