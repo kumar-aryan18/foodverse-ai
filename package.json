@@ -2,5 +2,30 @@
   "dependencies": {
     "lucide-react": "^1.59.0",
     "react-router-dom": "^7.18.4"
+  },
+  "name": "foodverse-ai",
+  "version": "1.0.0",
+  "description": "A multimodal AI platform that analyzes food images, videos, audio and user\r data to provide nutrition, freshness, hygiene, cooking and personalized\r meal insights.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kumar-aryan18/foodverse-ai.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/kumar-aryan18/foodverse-ai/issues"
+  },
+  "homepage": "https://github.com/kumar-aryan18/foodverse-ai#readme",
+  "devDependencies": {
+    "playwright": "^1.64.1"
   }
 }

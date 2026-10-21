@@ -17,7 +17,7 @@ from backend.meal_planner import PlanRequest, build_plan
 from backend.nutrition import get_nutrition, health_score
 from backend.smart_kitchen import KitchenItem, list_items, add_item, remove_item
 from backend.meal_ai import router as meal_ai_router
-app.include_router(meal_ai_router)
+
 
 ALLOWED = {"image/jpeg", "image/png", "image/webp"}
 MAX_BYTES = 5 * 1024 * 1024
@@ -67,6 +67,11 @@ from backend.voice import router as voice_router
 app.include_router(voice_router)
 from backend.recipe import router as recipe_router
 app.include_router(recipe_router)
+from backend.voice import router as voice_router
+app.include_router(voice_router)
+from backend.recipe import router as recipe_router
+app.include_router(recipe_router)
+app.include_router(meal_ai_router)
 async def load_image(file: UploadFile) -> Image.Image:
     if file.content_type not in ("image/jpeg", "image/png", "image/webp"):
         raise HTTPException(400, "Please upload a JPG, PNG or WEBP image.")

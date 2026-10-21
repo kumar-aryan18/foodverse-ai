@@ -79,9 +79,11 @@ def _ollama_json(prompt: str) -> dict:
         with urllib.request.urlopen(http_req, timeout=300) as r:
             body = json.loads(r.read().decode())
     except urllib.error.HTTPError as e:
-        if e.code == 404:
-            raise HTTPException(503, f"Model '{OLLAMA_MODEL}' is not installed. Run: ollama pull {OLLAMA_MODEL}")
-        raise HTTPException(500, f"Ollama error {e.code}")
+            err_body = e.read().decode()
+            print("OLLAMA RESPONSE:", err_body)
+            if e.code == 404:
+                raise HTTPException(503, f"Model '{OLLAMA_MODEL}' is not installed. Run: ollama pull {OLLAMA_MODEL}")
+            raise HTTPException(500, f"Ollama error {e.code}: {err_body}")
     except urllib.error.URLError:
         raise HTTPException(503, f"Could not reach Ollama at {OLLAMA_URL}. Start it and try again.")
     except Exception as e:
