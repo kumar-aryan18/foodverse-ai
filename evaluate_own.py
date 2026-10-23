@@ -13,7 +13,7 @@ for label in ("fresh", "rotten"):
         rows.append((p.name, label, r["state"]))
         ok = "OK " if label == r["state"] else "ERR"
         print(f"{ok} {p.name:25s} true={label:7s} pred={r['state']:7s} "
-              f"conf={r['confidence']:.2f} ({r['produce']})")
+            f"conf={r['confidence']:.2f}")
 
 correct = sum(1 for _, t, p in rows if t == p)
 print(f"\nAccuracy on own photos: {correct}/{len(rows)} = {correct / len(rows):.1%}")
